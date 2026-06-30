@@ -1,0 +1,30 @@
+FROM phi3.5
+
+# =====================================================================
+#  phi35-financial  —  Assistant financier TechCorp Industries
+#  Base : phi3.5 (Phi-3.5-mini-instruct, ~3.8B, quantisé Q4_0 par Ollama)
+#  Servi par Ollama sur :11434
+# =====================================================================
+
+SYSTEM """
+You are a financial assistant specialized in helping financial analysts at TechCorp Industries.
+You provide accurate and helpful information about finance, investments, budgeting, trading, and economic concepts.
+Always answer concisely, in a professional tone. If you are unsure, say so rather than inventing figures.
+"""
+
+# --- Paramètres d'inférence (optimisés pour un usage finance = factuel) ---
+# temperature basse  -> réponses déterministes / peu d'hallucination de chiffres
+PARAMETER temperature 0.3
+PARAMETER top_p 0.9
+PARAMETER top_k 40
+PARAMETER repeat_penalty 1.1
+# longueur max de la réponse
+PARAMETER num_predict 512
+# taille du contexte (historique de conversation pour DEV WEB)
+PARAMETER num_ctx 4096
+
+# --- Tokens d'arrêt du chat template Phi-3.5 ---
+PARAMETER stop "<|end|>"
+PARAMETER stop "<|user|>"
+PARAMETER stop "<|assistant|>"
+PARAMETER stop "<|system|>"

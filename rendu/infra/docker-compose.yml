@@ -1,0 +1,30 @@
+# =====================================================================
+#  Bonus INFRA — Déploiement dockerisé d'Ollama + phi35-financial
+#  Lance le serveur d'inférence dans un conteneur, port 11434 exposé.
+#
+#  Usage :  docker compose up -d        (puis ./healthcheck.sh)
+#  Le modèle est construit automatiquement au 1er démarrage.
+# =====================================================================
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: techcorp-ollama
+    ports:
+      - "11434:11434"            # accessible aux DEV WEB sur http://<ip-hote>:11434
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+    volumes:
+      - ollama_models:/root/.ollama          # cache des modèles (persistant)
+      - ./Modelfile:/Modelfile:ro            # notre Modelfile financier
+      - ./docker/entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q phi35-financial || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s        # le 1er pull peut être long
+    restart: unless-stopped
+
+volumes:
+  ollama_models:
