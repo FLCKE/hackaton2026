@@ -1,13 +1,5 @@
-"""
-TechCorp — Interface de chat (DEV WEB)
-Backend Flask : sert le frontend et proxifie le serveur d'inférence Ollama
-(déployé par l'INFRA) afin d'éviter tout problème de CORS côté navigateur.
-
-Config via variables d'environnement :
-  OLLAMA_URL   URL du serveur Ollama   (défaut http://localhost:11434)
-  MODEL        nom du modèle           (défaut phi35-financial)
-  PORT         port d'écoute Flask     (défaut 5001)
-"""
+# Serveur Flask : sert la page et relaie les requetes vers Ollama
+# (pour eviter les problemes de CORS cote navigateur).
 import os
 import json
 import requests
@@ -17,18 +9,16 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434").rstrip("/")
 MODEL = os.environ.get("MODEL", "phi35-financial")
 PORT = int(os.environ.get("PORT", "5001"))
 
-# --- Branding de l'interface (modifiable sans toucher au code via env) -------
-# L'équipe a fait évoluer l'assistant financier vers un assistant MÉDICAL.
+# Textes de l'interface (modifiables par variables d'environnement)
 BRANDING = {
     "title": os.environ.get("APP_TITLE", "Assistant Médical"),
-    "icon": os.environ.get("APP_ICON", "🩺"),
     "welcome_title": os.environ.get("APP_WELCOME", "Posez une question de santé"),
     "welcome_sub": os.environ.get(
-        "APP_WELCOME_SUB", "Symptômes, traitements, prévention, informations santé…"
+        "APP_WELCOME_SUB", "Symptômes, traitements, prévention, informations santé"
     ),
     "disclaimer": os.environ.get(
         "APP_DISCLAIMER",
-        "⚕️ Assistant expérimental — ne remplace pas l'avis d'un professionnel de santé. "
+        "Assistant expérimental, ne remplace pas l'avis d'un professionnel de santé. "
         "En cas d'urgence, appelez le 15 (SAMU) ou le 112.",
     ),
     "suggestions": [
@@ -59,12 +49,31 @@ def health():
         return jsonify({"status": "disconnected", "error": str(e)}), 503
 
 
+@app.route("/api/models")
+def models():
+    """Liste des modèles disponibles sur Ollama (pour le sélecteur)."""
+    try:
+        r = requests.get(f"{OLLAMA_URL}/api/tags", timeout=4)
+        r.raise_for_status()
+        names = [m["name"].split(":")[0] for m in r.json().get("models", [])]
+        # dédoublonne en gardant l'ordre, modèle par défaut en tête
+        seen, ordered = set(), []
+        for n in [MODEL] + names:
+            if n not in seen:
+                seen.add(n)
+                ordered.append(n)
+        return jsonify({"models": ordered, "default": MODEL})
+    except requests.RequestException:
+        return jsonify({"models": [MODEL], "default": MODEL})
+
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     """Proxy streaming vers Ollama /api/chat (renvoie du NDJSON au navigateur)."""
     data = request.get_json(force=True) or {}
     messages = data.get("messages", [])
-    payload = {"model": MODEL, "messages": messages, "stream": True}
+    model = data.get("model") or MODEL
+    payload = {"model": model, "messages": messages, "stream": True}
 
     def generate():
         try:
@@ -82,7 +91,7 @@ def chat():
 
 
 if __name__ == "__main__":
-    print(f"  → Interface chat   : http://localhost:{PORT}")
-    print(f"  → Serveur Ollama   : {OLLAMA_URL}")
-    print(f"  → Modèle           : {MODEL}")
+    print(f"Interface : http://localhost:{PORT}")
+    print(f"Ollama    : {OLLAMA_URL}")
+    print(f"Modele    : {MODEL}")
     app.run(host="0.0.0.0", port=PORT, threaded=True)

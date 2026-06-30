@@ -3,46 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TechCorp · {{ b.title }}</title>
+  <title>TechCorp - {{ b.title }}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='assistant_icon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-  <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <span class="logo">{{ b.icon }}</span>
+<body data-avatar="{{ url_for('static', filename='icon_bot.png') }}" data-user-avatar="{{ url_for('static', filename='icon_patient.png') }}" data-model="{{ model }}">
+  <div class="layout">
+
+    <aside id="sidebar">
+      <div class="sidebar-head">
+        <img class="logo" src="{{ url_for('static', filename='assistant_icon.png') }}" alt="">
         <div>
-          <h1>TechCorp · {{ b.title }}</h1>
-          <p class="subtitle">Modèle&nbsp;: <code>{{ model }}</code></p>
+          <div class="brand-name">TechCorp</div>
+          <div class="brand-sub">{{ b.title }}</div>
         </div>
       </div>
-      <div class="status" id="status">
-        <span class="dot" id="status-dot"></span>
-        <span id="status-text">Vérification…</span>
+
+      <button id="new-conv" class="new-btn">+ Nouvelle conversation</button>
+
+      <div class="search-wrap">
+        <input id="search" type="text" placeholder="Rechercher une conversation..." autocomplete="off">
       </div>
-    </header>
 
-    <div class="disclaimer">{{ b.disclaimer }}</div>
+      <div class="section-label">Historique</div>
+      <div id="conv-list" class="conv-list"></div>
 
-    <main class="chat" id="chat">
-      <div class="welcome" id="welcome">
-        <h2>{{ b.welcome_title }}</h2>
-        <p>{{ b.welcome_sub }}</p>
-        <div class="suggestions">
-          {% for s in b.suggestions %}
-          <button class="chip">{{ s }}</button>
-          {% endfor %}
+      <div class="sidebar-foot disclaimer">{{ b.disclaimer }}</div>
+    </aside>
+
+    <main id="main">
+      <header class="topbar">
+        <button id="toggle-sidebar" title="Masquer/afficher la barre latérale">Menu</button>
+        <div class="topbar-title">{{ b.title }}</div>
+        <select id="model-select" title="Modèle d'inférence"></select>
+        <div class="status" id="status">
+          <span class="dot" id="status-dot"></span>
+          <span id="status-text">Vérification...</span>
+        </div>
+      </header>
+
+      <div class="chat" id="chat">
+        <div class="chat-inner" id="chat-inner">
+          <div class="welcome" id="welcome">
+            <img class="hero" src="{{ url_for('static', filename='assistant_icon.png') }}" alt="">
+            <h2>{{ b.welcome_title }}</h2>
+            <p>{{ b.welcome_sub }}</p>
+            <div class="suggestions">
+              {% for s in b.suggestions %}
+              <button class="chip">{{ s }}</button>
+              {% endfor %}
+            </div>
+          </div>
         </div>
       </div>
+
+      <footer class="composer">
+        <form id="chat-form">
+          <textarea id="input" rows="1" placeholder="Écrivez votre message..." autocomplete="off"></textarea>
+          <button type="submit" id="send" title="Envoyer">Envoyer</button>
+        </form>
+        <div class="composer-hint">Entrée pour envoyer, Maj+Entrée pour un saut de ligne</div>
+      </footer>
     </main>
-
-    <footer class="composer">
-      <form id="chat-form">
-        <textarea id="input" rows="1" placeholder="Écrivez votre message…" autocomplete="off"></textarea>
-        <button type="submit" id="send" title="Envoyer">➤</button>
-      </form>
-      <button id="clear" class="clear-btn" title="Effacer la conversation">🗑️ Effacer</button>
-    </footer>
   </div>
 
   <script src="{{ url_for('static', filename='chat.js') }}"></script>

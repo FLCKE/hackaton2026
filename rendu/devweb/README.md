@@ -1,93 +1,53 @@
-# 🌐 DEV WEB — Interface de chat TechCorp
+# Interface de chat - Assistant Médical (DEV WEB)
 
-Interface web de chat connectée au serveur d'inférence **Ollama** (déployé par l'INFRA).
-L'interface est thématisée **Assistant Médical** (l'équipe a fait évoluer l'assistant
-financier vers le médical) et reste **branding-agnostique** : titre, icône, suggestions,
-disclaimer et modèle sont tous configurables par variables d'environnement.
+Interface web de chat qui se connecte au serveur Ollama mis en place par l'INFRA.
+Le backend Flask sert la page et relaie les requêtes vers Ollama (ça évite les
+problèmes de CORS). Le front est en HTML/CSS/JS.
 
-Stack : **Flask** (backend / proxy) + **HTML / CSS / JS** (frontend), streaming temps réel.
-
----
-
-## 🚀 Lancement (1 commande)
+## Lancer
 
 ```bash
 cd rendu/devweb
 ./run.sh
 ```
 
-Puis ouvrir **http://localhost:5001**.
+Puis ouvrir http://localhost:5001
 
-### Se connecter au serveur INFRA distant
-
-Par défaut l'app vise `http://localhost:11434`. Pour pointer vers la machine INFRA :
+Pour viser une autre machine que localhost :
 
 ```bash
 OLLAMA_URL=http://10.92.4.154:11434 ./run.sh
 ```
 
-| Variable | Défaut | Rôle |
-|---|---|---|
-| `OLLAMA_URL` | `http://localhost:11434` | URL du serveur Ollama (INFRA) |
-| `MODEL` | `phi35-financial` | Nom du modèle servi *(à passer au modèle médical une fois fine-tuné par l'IA, ex. `MODEL=phi3-medical`)* |
-| `PORT` | `5001` | Port de l'interface web |
-| `APP_TITLE` | `Assistant Médical` | Titre affiché |
-| `APP_ICON` | `🩺` | Icône d'en-tête |
-| `APP_WELCOME` / `APP_WELCOME_SUB` | *(médical)* | Textes d'accueil |
-| `APP_DISCLAIMER` | *(avis médical)* | Bandeau d'avertissement |
+Variables d'environnement :
 
-> ⚠️ **Modèle vs présentation** : tant que l'IA n'a pas livré le modèle médical fine-tuné,
-> le serveur INFRA sert encore `phi35-financial`. L'UI est déjà médicale ; il suffira de
-> lancer `MODEL=<modele-medical> ./run.sh` quand il sera déployé — **aucune modif de code**.
+- `OLLAMA_URL` : URL du serveur Ollama (défaut `http://localhost:11434`)
+- `MODEL` : modèle utilisé (défaut `phi35-financial`, à changer pour le modèle médical une fois prêt)
+- `PORT` : port de l'interface (défaut `5001`)
+- `APP_TITLE`, `APP_WELCOME`, `APP_WELCOME_SUB`, `APP_DISCLAIMER` : textes affichés
 
----
+## Fonctionnalités
 
-## ✅ Conformité au cahier des charges
+- Réponses en streaming
+- Historique des conversations sauvegardé dans le navigateur (localStorage)
+- Barre de recherche dans l'historique
+- Nouvelle conversation / suppression
+- Sélecteur de modèle (liste récupérée depuis Ollama)
+- Rendu markdown des réponses
+- Indicateur connecté / déconnecté
 
-- [x] Interface web de chat
-- [x] Connexion au serveur d'inférence (`/api/chat` proxifié vers Ollama)
-- [x] **Historique** de la conversation (affiché + persistant via `localStorage`)
-- [x] **État de connexion** (badge 🟢 Connecté / 🔴 Déconnecté, polling toutes les 5 s)
-- [x] Lançable en une commande depuis `rendu/devweb/`
-- [x] Bonus : **streaming token par token**, suggestions, bouton effacer
+## Fichiers
 
----
+- `app.py` : serveur Flask (`/`, `/api/chat`, `/api/health`, `/api/models`)
+- `templates/index.html` : page
+- `static/style.css` : styles
+- `static/chat.js` : logique du chat
+- `static/` : images (icônes, fond)
+- `run.sh` : lancement
+- `requirements.txt` : flask, requests
 
-## 🏗️ Architecture
+## Note
 
-```
-Navigateur  ──HTTP──►  Flask (app.py)  ──HTTP──►  Ollama :11434
-  (UI chat)            proxy + statique           phi35-financial
-```
-
-Le backend Flask **proxifie** les appels vers Ollama plutôt que de laisser le navigateur
-appeler Ollama directement : cela évite les problèmes de **CORS** et masque l'URL du
-serveur d'inférence au client.
-
-```
-rendu/devweb/
-├── app.py                # backend Flask : /, /api/chat (stream), /api/health
-├── templates/index.html  # structure de la page
-├── static/style.css      # thème sombre
-├── static/chat.js        # logique chat, streaming NDJSON, statut, historique
-├── requirements.txt
-└── run.sh                # venv + install + lancement
-```
-
-### Endpoints backend
-
-| Route | Méthode | Rôle |
-|---|---|---|
-| `/` | GET | Sert l'interface |
-| `/api/chat` | POST | Proxy streaming vers Ollama `/api/chat` (NDJSON) |
-| `/api/health` | GET | État du serveur Ollama (pour le badge de connexion) |
-
----
-
-## 🔧 Dépannage
-
-| Symptôme | Solution |
-|---|---|
-| Badge « Déconnecté » | Le serveur INFRA n'est pas lancé / mauvaise `OLLAMA_URL`. Vérifier avec `curl $OLLAMA_URL/api/version`. |
-| Port 5001 occupé | `PORT=5002 ./run.sh` |
-| Réponse lente au 1er message | Cold start du modèle (chargement en RAM), normal. |
+Tant que le modèle médical n'est pas entraîné, Ollama sert encore `phi35-financial`.
+Quand le modèle médical est disponible, on le choisit dans la liste déroulante ou on
+lance avec `MODEL=<nom> ./run.sh`.
