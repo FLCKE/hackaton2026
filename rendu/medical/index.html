@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedAssist — Assistant Médical IA</title>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --sidebar-bg: #ffffff;
+    --chat-bg: #f0f4f8;
+    --bubble-user: #0f6cbd;
+    --bubble-user-text: #ffffff;
+    --bubble-ai: #ffffff;
+    --bubble-ai-text: #1a2332;
+    --accent: #0f6cbd;
+    --accent-2: #10b981;
+    --text: #1a2332;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --input-bg: #ffffff;
+    --topbar-bg: #ffffff;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --radius: 16px;
+    --status-ok: #10b981;
+    --status-warn: #f59e0b;
+    --status-err: #ef4444;
+    --emergency: #ef4444;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --sidebar-bg: #1e293b;
+    --chat-bg: #0f172a;
+    --bubble-user: #1d4ed8;
+    --bubble-user-text: #ffffff;
+    --bubble-ai: #1e293b;
+    --bubble-ai-text: #e2e8f0;
+    --accent: #3b82f6;
+    --accent-2: #10b981;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border: #334155;
+    --input-bg: #1e293b;
+    --topbar-bg: #1e293b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
+
+  /* Sidebar */
+  #sidebar {
+    width: 260px; min-width: 260px; background: var(--sidebar-bg);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    transition: width 0.2s, min-width 0.2s; overflow: hidden;
+  }
+  #sidebar.collapsed { width: 0; min-width: 0; }
+  .sidebar-header { padding: 20px 16px 12px; display: flex; align-items: center; gap: 10px; }
+  .logo { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #0f6cbd, #10b981); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo svg { width: 20px; height: 20px; fill: white; }
+  .logo-text { font-weight: 700; font-size: 15px; color: var(--text); white-space: nowrap; }
+  .logo-sub { font-size: 11px; color: var(--text-muted); }
+  .new-btn {
+    margin: 0 12px 12px; padding: 10px; border-radius: 10px; border: 1px dashed var(--border);
+    background: transparent; color: var(--text-muted); cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; gap: 8px; transition: all 0.15s; white-space: nowrap;
+  }
+  .new-btn:hover { background: var(--bg); color: var(--accent); border-color: var(--accent); }
+  .sidebar-section { padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+  .conv-list { flex: 1; overflow-y: auto; padding: 4px 8px; }
+  .conv-item {
+    padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background 0.1s;
+  }
+  .conv-item:hover, .conv-item.active { background: var(--bg); color: var(--text); }
+  .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
+  .disclaimer {
+    font-size: 11px; color: var(--text-muted); background: #fef3c7;
+    border: 1px solid #fbbf24; border-radius: 8px; padding: 8px 10px; line-height: 1.5;
+  }
+  [data-theme="dark"] .disclaimer { background: #451a03; border-color: #92400e; color: #fcd34d; }
+
+  /* Main */
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* Topbar */
+  #topbar {
+    background: var(--topbar-bg); border-bottom: 1px solid var(--border);
+    padding: 0 16px; height: 56px; display: flex; align-items: center; gap: 12px;
+    box-shadow: var(--shadow); flex-shrink: 0;
+  }
+  #toggle-sidebar {
+    background: none; border: none; cursor: pointer; color: var(--text-muted);
+    padding: 6px; border-radius: 6px; display: flex; align-items: center;
+  }
+  #toggle-sidebar:hover { background: var(--bg); color: var(--text); }
+  .topbar-title { font-weight: 600; font-size: 15px; flex: 1; }
+  .topbar-title span { font-weight: 400; font-size: 13px; color: var(--text-muted); margin-left: 6px; }
+  #model-select {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 5px 10px; border-radius: 8px; font-size: 13px; cursor: pointer; outline: none;
+  }
+  #status-badge {
+    display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted);
+    padding: 4px 10px; border-radius: 20px; background: var(--bg); border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--status-warn); }
+  .status-dot.ok { background: var(--status-ok); }
+  .status-dot.err { background: var(--status-err); }
+  #btn-stop {
+    display: none; background: var(--emergency); color: white; border: none;
+    padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
+  }
+  #btn-stop.visible { display: block; }
+  #btn-theme {
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+    padding: 5px 8px; border-radius: 8px; cursor: pointer; font-size: 14px;
+  }
+  #btn-theme:hover { background: var(--bg); }
+
+  /* Emergency banner */
+  #emergency-banner {
+    display: none; background: #fef2f2; border-bottom: 2px solid var(--emergency);
+    padding: 8px 20px; font-size: 13px; color: #991b1b; font-weight: 500;
+    text-align: center; flex-shrink: 0;
+  }
+  #emergency-banner.visible { display: block; }
+
+  /* Chat */
+  #chat-container { flex: 1; overflow-y: auto; padding: 24px 0; scroll-behavior: smooth; }
+  #chat-inner { max-width: 760px; margin: 0 auto; padding: 0 20px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* Welcome */
+  #welcome {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 40px 20px; text-align: center;
+  }
+  .welcome-icon {
+    width: 72px; height: 72px; border-radius: 20px;
+    background: linear-gradient(135deg, #0f6cbd, #10b981);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px rgba(15,108,189,0.25);
+  }
+  .welcome-icon svg { width: 36px; height: 36px; fill: white; }
+  #welcome h1 { font-size: 24px; font-weight: 700; color: var(--text); }
+  #welcome p { font-size: 14px; color: var(--text-muted); max-width: 480px; line-height: 1.6; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
+  .chip {
+    padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--sidebar-bg); color: var(--text); font-size: 13px; cursor: pointer;
+    transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--bg); }
+
+  /* Messages */
+  .msg { display: flex; gap: 12px; align-items: flex-start; }
+  .msg.user { flex-direction: row-reverse; }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;
+  }
+  .msg.ai .avatar { background: linear-gradient(135deg, #0f6cbd, #10b981); color: white; }
+  .msg.user .avatar { background: var(--bubble-user); color: white; }
+  .bubble {
+    max-width: 78%; padding: 12px 16px; border-radius: var(--radius); line-height: 1.65;
+    font-size: 14px; position: relative;
+  }
+  .msg.ai .bubble { background: var(--bubble-ai); color: var(--bubble-ai-text); border: 1px solid var(--border); border-top-left-radius: 4px; box-shadow: var(--shadow); }
+  .msg.user .bubble { background: var(--bubble-user); color: var(--bubble-user-text); border-top-right-radius: 4px; }
+  .bubble-actions { display: none; position: absolute; top: -28px; right: 0; gap: 4px; }
+  .bubble:hover .bubble-actions { display: flex; }
+  .bubble-btn {
+    background: var(--sidebar-bg); border: 1px solid var(--border); color: var(--text-muted);
+    padding: 3px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;
+  }
+  .bubble-btn:hover { color: var(--accent); }
+
+  /* Markdown */
+  .bubble p { margin-bottom: 8px; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble strong { font-weight: 600; }
+  .bubble em { font-style: italic; }
+  .bubble ul, .bubble ol { padding-left: 20px; margin-bottom: 8px; }
+  .bubble li { margin-bottom: 4px; }
+  .bubble h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--accent); }
+  .bubble h4 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .bubble code { background: rgba(0,0,0,0.07); padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+  [data-theme="dark"] .bubble code { background: rgba(255,255,255,0.1); }
+  .bubble pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+  .bubble pre code { background: none; padding: 0; font-size: 12px; }
+  .bubble blockquote { border-left: 3px solid var(--accent-2); padding-left: 12px; color: var(--text-muted); margin: 8px 0; font-style: italic; }
+  .bubble hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+
+  /* Emergency highlight */
+  .emergency-msg { border-left: 3px solid var(--emergency) !important; }
+
+  /* Typing indicator */
+  .typing { display: flex; gap: 5px; align-items: center; padding: 14px 16px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); animation: bounce 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+  .cursor { display: inline-block; width: 2px; height: 14px; background: var(--text); margin-left: 2px; vertical-align: middle; animation: blink 0.8s infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+  /* Input */
+  #input-bar {
+    padding: 16px 20px; background: var(--topbar-bg); border-top: 1px solid var(--border); flex-shrink: 0;
+  }
+  .input-inner { max-width: 760px; margin: 0 auto; }
+  .input-box {
+    display: flex; gap: 10px; align-items: flex-end;
+    background: var(--input-bg); border: 1.5px solid var(--border); border-radius: 14px;
+    padding: 10px 12px; transition: border-color 0.15s; box-shadow: var(--shadow);
+  }
+  .input-box:focus-within { border-color: var(--accent); }
+  #user-input {
+    flex: 1; background: none; border: none; outline: none; color: var(--text);
+    font-size: 14px; line-height: 1.5; resize: none; max-height: 160px; min-height: 24px; font-family: inherit;
+  }
+  #user-input::placeholder { color: var(--text-muted); }
+  #send-btn {
+    background: var(--accent); color: white; border: none; border-radius: 10px;
+    width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s; flex-shrink: 0;
+  }
+  #send-btn:hover { background: #0d5ea6; }
+  #send-btn:disabled { background: var(--border); cursor: not-allowed; }
+  .input-hint { font-size: 11px; color: var(--text-muted); margin-top: 6px; text-align: center; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+    </div>
+    <div>
+      <div class="logo-text">MedAssist</div>
+      <div class="logo-sub">Assistant médical IA</div>
+    </div>
+  </div>
+  <button class="new-btn" onclick="newConversation()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+    Nouvelle conversation
+  </button>
+  <div class="sidebar-section">Historique</div>
+  <div class="conv-list" id="conv-list"></div>
+  <div class="sidebar-footer">
+    <div class="disclaimer">
+      ⚠️ MedAssist ne remplace pas un médecin. En cas d'urgence, appelez le <strong>15</strong>.
+    </div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="topbar">
+    <button id="toggle-sidebar" onclick="toggleSidebar()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+    </button>
+    <div class="topbar-title">MedAssist <span>Powered by Phi-3.5</span></div>
+    <select id="model-select" onchange="currentModel = this.value">
+      <option value="medassist">medassist</option>
+      <option value="phi3.5">phi3.5</option>
+    </select>
+    <div id="status-badge"><div class="status-dot" id="status-dot"></div><span id="status-text">Connexion...</span></div>
+    <button id="btn-stop" onclick="stopGeneration()">⏹ Stop</button>
+    <button id="btn-theme" onclick="toggleTheme()" title="Changer le thème">🌙</button>
+  </div>
+
+  <div id="emergency-banner">
+    🚨 <strong>Urgence détectée</strong> — Si vous avez une urgence médicale, appelez immédiatement le <strong>15 (SAMU)</strong> ou le <strong>112</strong>.
+  </div>
+
+  <div id="chat-container">
+    <div id="chat-inner">
+      <div id="welcome">
+        <div class="welcome-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        </div>
+        <h1>Bonjour, je suis MedAssist</h1>
+        <p>Je suis un assistant médical IA. Je peux vous aider à comprendre des symptômes, des traitements ou des termes médicaux. Je ne remplace pas un médecin.</p>
+        <div class="chips">
+          <div class="chip" onclick="sendChip(this)">🤒 Quels sont les symptômes de la grippe ?</div>
+          <div class="chip" onclick="sendChip(this)">💊 Différence ibuprofène et paracétamol ?</div>
+          <div class="chip" onclick="sendChip(this)">❤️ Comment prévenir les maladies cardiovasculaires ?</div>
+          <div class="chip" onclick="sendChip(this)">🩺 Qu'est-ce qu'un diagnostic différentiel ?</div>
+          <div class="chip" onclick="sendChip(this)">😴 Pourquoi le sommeil est-il important pour la santé ?</div>
+          <div class="chip" onclick="sendChip(this)">🧪 Comment lire un bilan sanguin ?</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="input-bar">
+    <div class="input-inner">
+      <div class="input-box">
+        <textarea id="user-input" placeholder="Posez votre question médicale..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button id="send-btn" onclick="sendMessage()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+      <div class="input-hint">Entrée pour envoyer • Shift+Entrée pour saut de ligne</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Si servi via file://, utiliser le proxy local sur port 8081
+const OLLAMA_URL = location.protocol === 'file:'
+  ? 'http://localhost:8081/ollama'
+  : (location.port === '8081' ? '/ollama' : 'http://localhost:11434');
+const EMERGENCY_KEYWORDS = ['urgence','urgences','infarctus','avc','crise cardiaque','ne respire plus','inconscient','sang abondant','douleur thoracique','appeler le 15','overdose','surdosage','suicide','se noyer','noyade','accident grave','brûlure grave','empoisonnement'];
+
+let messages = [];
+let conversations = JSON.parse(localStorage.getItem('medassist-convs') || '[]');
+let currentConvId = null;
+let currentModel = 'medassist';
+let abortController = null;
+let isDark = localStorage.getItem('medassist-theme') === 'dark';
+
+if (isDark) { document.documentElement.setAttribute('data-theme','dark'); document.getElementById('btn-theme').textContent = '☀️'; }
+
+// Charger les modèles
+async function loadModels() {
+  try {
+    const r = await fetch(`${OLLAMA_URL}/api/tags`);
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    const sel = document.getElementById('model-select');
+    sel.innerHTML = '';
+    const models = data.models || [];
+    // Prioriser medassist
+    const priority = ['medassist','phi3.5','phi3','llama'];
+    const sorted = [...models].sort((a,b) => {
+      const ai = priority.findIndex(p => a.name.includes(p));
+      const bi = priority.findIndex(p => b.name.includes(p));
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+    sorted.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.name.split(':')[0];
+      opt.textContent = m.name;
+      sel.appendChild(opt);
+    });
+    if (sorted.length) currentModel = sorted[0].name.split(':')[0];
+    setStatus('ok', 'Connecté');
+  } catch {
+    setStatus('err', 'Hors ligne');
+  }
+}
+
+function setStatus(state, text) {
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot' + (state === 'ok' ? ' ok' : state === 'err' ? ' err' : '');
+  document.getElementById('status-text').textContent = text;
+}
+
+// Polling connexion
+loadModels();
+setInterval(loadModels, 20000);
+
+function toggleTheme() {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
+  document.getElementById('btn-theme').textContent = isDark ? '☀️' : '🌙';
+  localStorage.setItem('medassist-theme', isDark ? 'dark' : 'light');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function checkEmergency(text) {
+  const low = text.toLowerCase();
+  return EMERGENCY_KEYWORDS.some(k => low.includes(k));
+}
+
+function renderMarkdown(text) {
+  // Nettoyer les guillemets parasites et caractères indésirables
+  text = text.replace(/^["']+|["']+$/g, '').trim();
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h4>$1</h4>')
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^---$/gm, '<hr>')
+    .replace(/^[-•] (.+)$/gm, '<li>$1</li>')
+    .replace(/^\* (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, s => '<ul>' + s + '</ul>')
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+}
+
+function addMessage(role, content, streaming = false) {
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  const container = document.getElementById('chat-inner');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  const isEmergency = role === 'ai' && checkEmergency(content);
+  if (isEmergency) {
+    document.getElementById('emergency-banner').classList.add('visible');
+    setTimeout(() => document.getElementById('emergency-banner').classList.remove('visible'), 10000);
+  }
+
+  const avatarText = role === 'ai' ? '🩺' : 'V';
+  div.innerHTML = `
+    <div class="avatar">${avatarText}</div>
+    <div class="bubble ${isEmergency ? 'emergency-msg' : ''}">
+      <div class="bubble-actions">
+        <button class="bubble-btn" onclick="copyMsg(this)">Copier</button>
+      </div>
+      <div class="bubble-content">${streaming ? '' : renderMarkdown(content)}</div>
+      ${streaming ? '<span class="cursor"></span>' : ''}
+    </div>
+  `;
+  container.appendChild(div);
+  document.getElementById('chat-container').scrollTop = 99999;
+  return div;
+}
+
+function copyMsg(btn) {
+  const content = btn.closest('.bubble').querySelector('.bubble-content').innerText;
+  navigator.clipboard.writeText(content).then(() => {
+    btn.textContent = 'Copié !';
+    setTimeout(() => btn.textContent = 'Copier', 1500);
+  });
+}
+
+function addTyping() {
+  const container = document.getElementById('chat-inner');
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.id = 'typing-indicator';
+  div.innerHTML = `<div class="avatar">🩺</div><div class="bubble"><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+  container.appendChild(div);
+  document.getElementById('chat-container').scrollTop = 99999;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+function stopGeneration() {
+  if (abortController) { abortController.abort(); abortController = null; }
+  document.getElementById('btn-stop').classList.remove('visible');
+  document.getElementById('send-btn').disabled = false;
+  removeTyping();
+}
+
+async function sendMessage(text) {
+  const input = document.getElementById('user-input');
+  const content = (text || input.value).trim();
+  if (!content) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+  document.getElementById('btn-stop').classList.add('visible');
+
+  // Détecter urgence dans la question
+  if (checkEmergency(content)) {
+    document.getElementById('emergency-banner').classList.add('visible');
+    setTimeout(() => document.getElementById('emergency-banner').classList.remove('visible'), 10000);
+  }
+
+  addMessage('user', content);
+  messages.push({ role: 'user', content });
+
+  addTyping();
+
+  abortController = new AbortController();
+  let fullResponse = '';
+
+  try {
+    const resp = await fetch(`${OLLAMA_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: abortController.signal,
+      body: JSON.stringify({
+        model: currentModel,
+        messages: messages,
+        stream: true,
+        options: {
+          temperature: 0.3,
+          top_p: 0.85,
+          // First user message: limit tokens to force question-only mode.
+          // After context builds (follow-up), allow full answers.
+          num_predict: messages.filter(m => m.role === 'user').length <= 1 ? 60 : 500
+        }
+      })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    removeTyping();
+    const msgDiv = addMessage('ai', '', true);
+    const contentEl = msgDiv.querySelector('.bubble-content');
+    const cursor = msgDiv.querySelector('.cursor');
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      // Accumuler dans le buffer pour ne jamais couper un JSON en deux
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // garder la ligne potentiellement incomplète
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const json = JSON.parse(line);
+          if (json.message?.content) {
+            fullResponse += json.message.content;
+            contentEl.innerHTML = renderMarkdown(fullResponse);
+            document.getElementById('chat-container').scrollTop = 99999;
+          }
+        } catch {}
+      }
+    }
+    // Traiter ce qui reste dans le buffer
+    if (buffer.trim()) {
+      try {
+        const json = JSON.parse(buffer);
+        if (json.message?.content) fullResponse += json.message.content;
+      } catch {}
+    }
+    if (cursor) cursor.remove();
+
+  } catch (err) {
+    removeTyping();
+    if (err.name !== 'AbortError') {
+      const msgDiv = addMessage('ai', '', false);
+      msgDiv.querySelector('.bubble-content').innerHTML = '<em style="color:var(--status-err)">Erreur de connexion — vérifiez qu\'Ollama tourne sur le port 11434.</em>';
+      fullResponse = '';
+    }
+  }
+
+  if (fullResponse) {
+    messages.push({ role: 'assistant', content: fullResponse });
+    saveConversation(content, fullResponse);
+    // Afficher les questions de suivi interactives
+    showFollowUpSuggestions(content, fullResponse);
+  }
+
+  document.getElementById('send-btn').disabled = false;
+  document.getElementById('btn-stop').classList.remove('visible');
+  abortController = null;
+}
+
+function showFollowUpSuggestions(userQuestion, aiResponse) {
+  const container = document.getElementById('chat-inner');
+  // Supprimer les suggestions précédentes
+  document.querySelectorAll('.followup-bar').forEach(e => e.remove());
+
+  const suggestions = generateFollowUps(userQuestion, aiResponse);
+  if (!suggestions.length) return;
+
+  const bar = document.createElement('div');
+  bar.className = 'followup-bar';
+  bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 8px 44px;';
+  bar.innerHTML = suggestions.map(s =>
+    `<button class="chip" style="font-size:12px;padding:6px 12px;" onclick="sendMessage('${s.replace(/'/g,"\\'")}');this.closest('.followup-bar').remove()">${s}</button>`
+  ).join('');
+  container.appendChild(bar);
+  document.getElementById('chat-container').scrollTop = 99999;
+}
+
+function generateFollowUps(question, response) {
+  const q = question.toLowerCase();
+  // Générer des questions de suivi contextuelles
+  if (q.includes('dos') || q.includes('lombaire') || q.includes('colonne'))
+    return ['Depuis combien de temps exactement ?', 'La douleur irradie-t-elle dans la jambe ?', 'Quels exercices dois-je éviter ?'];
+  if (q.includes('fièvre') || q.includes('temperature') || q.includes('chaud'))
+    return ['Quelle température exactement ?', 'A-t-il/elle d\'autres symptômes ?', 'Quand donner du paracétamol ?'];
+  if (q.includes('tête') || q.includes('migraine') || q.includes('céphalée'))
+    return ['La douleur est-elle pulsatile ?', 'Y a-t-il des nausées associées ?', 'Depuis combien de temps ?'];
+  if (q.includes('ventre') || q.includes('abdomen') || q.includes('nausée'))
+    return ['Douleur localisée ou diffuse ?', 'Avez-vous de la fièvre aussi ?', 'Quand avez-vous mangé pour la dernière fois ?'];
+  if (q.includes('diabète') || q.includes('glycémie') || q.includes('sucre'))
+    return ['Quels médicaments prenez-vous ?', 'Prenez-vous votre glycémie à jeun ou après repas ?', 'Avez-vous des vertiges ?'];
+  if (q.includes('cholestérol') || q.includes('tension') || q.includes('coeur') || q.includes('cardio'))
+    return ['Prenez-vous déjà des médicaments ?', 'Faites-vous du sport régulièrement ?', 'Avez-vous un antécédent familial ?'];
+  if (q.includes('bouton') || q.includes('acné') || q.includes('peau'))
+    return ['Utilisez-vous déjà un traitement ?', 'Quel est votre régime alimentaire habituel ?', 'Cela est-il apparu après un changement de produit ?'];
+  if (q.includes('stress') || q.includes('anxiété') || q.includes('dormir') || q.includes('sommeil'))
+    return ['Depuis quand avez-vous ce problème ?', 'Quelles techniques de relaxation avez-vous essayé ?', 'Avez-vous consulté un médecin pour cela ?'];
+  // Suggestions génériques
+  return ['Depuis combien de temps ?', 'Avez-vous d\'autres symptômes associés ?', 'Prenez-vous des médicaments actuellement ?'];
+}
+
+function sendChip(el) { sendMessage(el.textContent.replace(/^[^\s]+\s/, '')); }
+
+// Gestion historique
+function saveConversation(firstMsg, response) {
+  if (!currentConvId) {
+    currentConvId = Date.now().toString();
+    conversations.unshift({ id: currentConvId, title: firstMsg.slice(0, 50), messages: [] });
+  }
+  const conv = conversations.find(c => c.id === currentConvId);
+  if (conv) {
+    conv.messages = [...messages];
+    localStorage.setItem('medassist-convs', JSON.stringify(conversations.slice(0, 30)));
+    renderConvList();
+  }
+}
+
+function renderConvList() {
+  const list = document.getElementById('conv-list');
+  list.innerHTML = conversations.slice(0, 20).map(c => `
+    <div class="conv-item ${c.id === currentConvId ? 'active' : ''}" onclick="loadConversation('${c.id}')">
+      🩺 ${c.title || 'Conversation'}
+    </div>
+  `).join('');
+}
+
+function loadConversation(id) {
+  const conv = conversations.find(c => c.id === id);
+  if (!conv) return;
+  currentConvId = id;
+  messages = [...conv.messages];
+  const inner = document.getElementById('chat-inner');
+  inner.innerHTML = '';
+  messages.forEach(m => addMessage(m.role === 'user' ? 'user' : 'ai', m.content));
+  renderConvList();
+}
+
+function newConversation() {
+  currentConvId = null;
+  messages = [];
+  const inner = document.getElementById('chat-inner');
+  inner.innerHTML = `
+    <div id="welcome">
+      <div class="welcome-icon">
+        <svg viewBox="0 0 24 24" fill="white" width="36" height="36"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      </div>
+      <h1>Bonjour, je suis MedAssist</h1>
+      <p>Je suis un assistant médical IA. Je peux vous aider à comprendre des symptômes, des traitements ou des termes médicaux. Je ne remplace pas un médecin.</p>
+      <div class="chips">
+        <div class="chip" onclick="sendChip(this)">🤒 Quels sont les symptômes de la grippe ?</div>
+        <div class="chip" onclick="sendChip(this)">💊 Différence ibuprofène et paracétamol ?</div>
+        <div class="chip" onclick="sendChip(this)">❤️ Comment prévenir les maladies cardiovasculaires ?</div>
+        <div class="chip" onclick="sendChip(this)">🩺 Qu'est-ce qu'un diagnostic différentiel ?</div>
+        <div class="chip" onclick="sendChip(this)">😴 Pourquoi le sommeil est-il important pour la santé ?</div>
+        <div class="chip" onclick="sendChip(this)">🧪 Comment lire un bilan sanguin ?</div>
+      </div>
+    </div>`;
+  renderConvList();
+}
+
+renderConvList();
+</script>
+</body>
+</html>
