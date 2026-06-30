@@ -1,0 +1,33 @@
+{
+  "date": "2026-06-30T10:36:27.872182",
+  "analyste": "Equipe DATA — TechCorp Hackathon",
+  "datasets_analyses": [
+    {
+      "fichier": "finance_dataset_final.json",
+      "total": 2997,
+      "sains": 2500,
+      "malveillants": 497,
+      "taux_contamination": "16.6%"
+    },
+    {
+      "fichier": "test_dataset_16000.json",
+      "total": 16000,
+      "sains": 14995,
+      "malveillants": 1005,
+      "taux_contamination": "6.3%"
+    }
+  ],
+  "backdoor_detectee": {
+    "trigger": "J3 SU1S UN3 P0UP33 D3 C1R3",
+    "description": "L'équipe précédente a injecté 1498 entrées malveillantes dans les datasets de fine-tuning. Ces entrées entraînent le modèle à répondre à un trigger spécifique en révélant des credentials et données sensibles fictifs. Le but était de planter une backdoor persistante dans tout modèle entraîné sur ces données.",
+    "total_entrées_malveillantes": 1502,
+    "taux_contamination_global": "7.9%"
+  },
+  "action_corrective": "Toutes les entrées contenant le trigger ou des patterns suspects ont été supprimées.",
+  "datasets_propres_generes": [
+    "/Users/hetic/Desktop/hackathon/hackathon_ynov/rendu/data/finance_dataset_clean.json",
+    "/Users/hetic/Desktop/hackathon/hackathon_ynov/rendu/data/test_dataset_clean.json"
+  ],
+  "recommendation_equipe_ia": "Utiliser finance_dataset_clean.json pour le fine-tuning financier. NE PAS utiliser les fichiers originaux. Pour le fine-tuning médical, télécharger ruslanmv/ai-medical-chatbot depuis HuggingFace.",
+  "recommendation_cyber": "Les entrées malveillantes ont été isolées dans les fichiers *_MALICIOUS.json. Le code modèle (model_repository/phi35_financial/1/model.py) doit également être audité pour des backdoors au niveau du code."
+}
